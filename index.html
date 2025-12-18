@@ -1,94 +1,55 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Photo Details Viewer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Link to the ExifReader library -->
-    <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
-    <style>
-        body {
-            font-family: sans-serif;
-            padding: 20px;
-            line-height: 1.6;
-        }
-        #preview {
-            max-width: 100%;
-            height: auto;
-            margin: 15px 0;
-            border-radius: 8px;
-        }
-        #info {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .detail-item {
-            margin-bottom: 8px;
-        }
-        .detail-label {
-            font-weight: bold;
-            color: #555;
-        }
-    </style>
-</head>
-<body>
-    <h2>📸 View Photo Details</h2>
-    <p>Select a photo from your phone to see where and when it was taken.</p>
+<script>
+    document.getElementById('photoUpload').addEventListener('change', async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-    <!-- Step 1: The file input button -->
-    <input type="file" id="photoUpload" accept="image/*" />
+        // Show image preview
+        const preview = document.getElementById('preview');
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
 
-    <!-- Where the selected photo will be shown -->
-    <img id="preview" style="display:none;" />
+        const infoDiv = document.getElementById('info');
+        infoDiv.innerHTML = `<p>Reading data...</p>`;
 
-    <!-- Step 2: Where the photo's details will be displayed -->
-    <div id="info">
-        <p>Details will appear here after you select a photo.</p>
-    </div>
+        try {
+            const tags = await ExifReader.load(file, { includeUnknown: true });
 
-    <script>
-        document.getElementById('photoUpload').addEventListener('change', async function(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            // Log ALL available tags to the browser's console for inspection
+            console.log("All EXIF tags found:", tags);
 
-            // A. Show a preview of the selected image
-            const preview = document.getElementById('preview');
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.src = e.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-
-            // B. Use ExifReader to get the photo's metadata
-            try {
-                const tags = await ExifReader.load(file);
-
-                // C. Extract the specific details we want
-                const dateTime = tags['DateTimeOriginal']?.description || 'Not Found';
-                const latitude = tags['GPSLatitude']?.description;
-                const longitude = tags['GPSLongitude']?.description;
-
-                let locationText = 'Not Found';
-                // If we have both latitude and longitude, format them nicely
-                if (latitude && longitude) {
-                    locationText = `${latitude}, ${longitude}`;
-                }
-
-                // D. Display the details on the page
-                const infoDiv = document.getElementById('info');
-                infoDiv.innerHTML = `
-                    <div class="detail-item"><span class="detail-label">Date & Time:</span> ${dateTime}</div>
-                    <div class="detail-item"><span class="detail-label">Location (GPS):</span> ${locationText}</div>
-                    <div class="detail-item"><span class="detail-label">Camera Model:</span> ${tags['Model']?.description || 'Not Found'}</div>
-                `;
-
-            } catch (error) {
-                console.error("Error reading EXIF data:", error);
-                document.getElementById('info').innerHTML = `<p>Could not read details from this image. It might not have any stored data.</p>`;
+            // Extract and display key details with better error handling
+            const dateTime = tags['DateTimeOriginal']?.description || 'Not Found in EXIF';
+            
+            // GPS Data Extraction
+            let locationText = 'No GPS data found';
+            if (tags['GPSLatitude'] && tags['GPSLongitude']) {
+                const lat = tags['GPSLatitude'].description;
+                const lon = tags['GPSLongitude'].description;
+                locationText = `${lat}, ${lon}`;
+                
+                // Also try to read the raw values (different format)
+                console.log("GPSLatitude (raw):", tags['GPSLatitude'].value);
+                console.log("GPSLongitude (raw):", tags['GPSLongitude'].value);
+            } else {
+                console.warn("GPSLatitude or GPSLongitude tag is missing.");
+                // List what GPS-related tags ARE present
+                const gpsTags = Object.keys(tags).filter(key => key.includes('GPS'));
+                console.log("Available GPS-related tags:", gpsTags);
             }
-        });
-    </script>
-</body>
-</html>
+
+            infoDiv.innerHTML = `
+                <div class="detail-item"><span class="detail-label">Date & Time:</span> ${dateTime}</div>
+                <div class="detail-item"><span class="detail-label">Location (GPS):</span> ${locationText}</div>
+                <div class="detail-label">Debug Info:</span> Check browser console (F12) for full EXIF data.</div>
+            `;
+
+        } catch (error) {
+            console.error("Error reading EXIF data:", error);
+            infoDiv.innerHTML = `<p>Error reading file. The file might be corrupted or not a JPEG.</p>`;
+        }
+    });
+</script>
