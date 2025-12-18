@@ -1,151 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Details Viewer - Complete</title>
+    <title>Photo Details Viewer - Fixed</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding: 20px;
             line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h2 {
-            color: #2c3e50;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
         }
         #preview {
             max-width: 100%;
             height: auto;
             margin: 20px 0;
             border-radius: 10px;
-            border: 2px solid #ddd;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         .info-card {
-            background: white;
-            border-radius: 10px;
+            background: #f8f9fa;
             padding: 20px;
+            border-radius: 10px;
             margin: 20px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            border: 1px solid #e0e0e0;
         }
         .info-row {
-            display: flex;
-            margin: 12px 0;
+            margin: 10px 0;
             padding: 10px;
-            background: #f8f9fa;
+            background: white;
             border-radius: 6px;
-            align-items: center;
         }
         .info-label {
-            font-weight: 600;
+            font-weight: bold;
             color: #2c3e50;
-            width: 140px;
-            min-width: 140px;
         }
-        .info-value {
-            flex: 1;
-            color: #34495e;
-        }
-        .success { color: #27ae60; font-weight: 600; }
-        .error { color: #e74c3c; }
-        .warning { color: #f39c12; }
-        
-        .maps-button {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 5px;
-            text-decoration: none;
-            margin-top: 8px;
-            font-weight: 500;
-            transition: background 0.3s;
-        }
-        .maps-button:hover {
-            background: #2980b9;
-        }
-        
-        .debug-section {
-            background: #f8f9fa;
-            border-left: 4px solid #3498db;
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .debug {
+            background: #e9ecef;
             padding: 15px;
-            margin-top: 25px;
-            border-radius: 0 8px 8px 0;
-        }
-        .debug-title {
-            color: #2c3e50;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-        
-        .gps-raw {
-            font-family: 'Courier New', monospace;
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            margin: 10px 0;
-            overflow-x: auto;
-        }
-        
-        input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            border: 2px dashed #3498db;
             border-radius: 8px;
-            background: #f8f9fa;
-            font-size: 16px;
-            margin: 15px 0;
-        }
-        
-        @media (max-width: 600px) {
-            .info-row {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .info-label {
-                width: 100%;
-                margin-bottom: 5px;
-            }
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
-    <h2>📸 Photo EXIF Data Viewer</h2>
-    <p>Upload any photo to see its hidden metadata including GPS location, date, and camera details.</p>
+    <h2>📸 Photo Details Viewer</h2>
+    <p>Upload a photo to see its EXIF data including GPS location.</p>
     
     <input type="file" id="photoUpload" accept="image/*" />
+    <img id="preview" style="display:none;" />
     
-    <div id="output">
+    <div id="info">
         <div class="info-card">
-            <p style="color: #7f8c8d; text-align: center;">Upload a photo to see its details here</p>
+            <p>No photo selected yet.</p>
         </div>
     </div>
 
     <script>
-        // GPS CONVERSION FUNCTION
-        function convertGPSCoordinate(gpsArray, ref) {
-            if (!gpsArray || !Array.isArray(gpsArray) || gpsArray.length < 3) {
+        // FIXED GPS CONVERSION FUNCTION
+        function convertGPSCoordinate(gpsValue, ref) {
+            console.log('Converting GPS value:', gpsValue, 'Ref:', ref);
+            
+            // Handle different GPS data formats
+            if (!gpsValue) {
+                console.log('No GPS value provided');
                 return null;
             }
             
-            const degrees = gpsArray[0];
-            const minutes = gpsArray[1];
-            const seconds = gpsArray[2];
-            
-            let decimal = degrees + (minutes / 60) + (seconds / 3600);
-            
-            if (ref === 'S' || ref === 'W') {
-                decimal = -decimal;
+            // Format 1: Array like [41, 53, 24.48]
+            if (Array.isArray(gpsValue) && gpsValue.length >= 3) {
+                const degrees = Number(gpsValue[0]) || 0;
+                const minutes = Number(gpsValue[1]) || 0;
+                const seconds = Number(gpsValue[2]) || 0;
+                
+                let decimal = degrees + (minutes / 60) + (seconds / 3600);
+                
+                if (ref === 'S' || ref === 'W') {
+                    decimal = -decimal;
+                }
+                
+                console.log(`Converted [${degrees}, ${minutes}, ${seconds}] to ${decimal}`);
+                return decimal;
             }
             
-            return decimal;
+            // Format 2: Already a decimal number
+            if (typeof gpsValue === 'number') {
+                let decimal = gpsValue;
+                if (ref === 'S' || ref === 'W') {
+                    decimal = -decimal;
+                }
+                console.log(`Using number directly: ${decimal}`);
+                return decimal;
+            }
+            
+            // Format 3: String representation
+            if (typeof gpsValue === 'string') {
+                try {
+                    let decimal = parseFloat(gpsValue);
+                    if (!isNaN(decimal)) {
+                        if (ref === 'S' || ref === 'W') {
+                            decimal = -decimal;
+                        }
+                        console.log(`Parsed string "${gpsValue}" to ${decimal}`);
+                        return decimal;
+                    }
+                } catch (e) {
+                    console.log('Failed to parse string:', e);
+                }
+            }
+            
+            console.log('Unknown GPS format:', typeof gpsValue, gpsValue);
+            return null;
         }
         
         // MAIN FUNCTION
@@ -153,161 +119,128 @@
             const file = event.target.files[0];
             if (!file) return;
             
-            const outputDiv = document.getElementById('output');
-            outputDiv.innerHTML = '<div class="info-card"><p style="text-align: center;">Reading photo data...</p></div>';
+            const preview = document.getElementById('preview');
+            const infoDiv = document.getElementById('info');
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+            
+            infoDiv.innerHTML = '<div class="info-card"><p>Reading photo data...</p></div>';
             
             try {
                 const tags = await ExifReader.load(file, { includeUnknown: true });
                 
-                // Log all tags to console for debugging
-                console.log('All EXIF tags:', tags);
+                // DEBUG: Log all GPS-related tags
+                console.log('=== ALL GPS TAGS ===');
+                Object.keys(tags).forEach(key => {
+                    if (key.includes('GPS') || key.includes('gps')) {
+                        console.log(`${key}:`, tags[key]);
+                    }
+                });
                 
-                // 1. EXTRACT AND CONVERT GPS DATA
+                // Extract GPS data
+                const gpsLatitude = tags['GPSLatitude'];
+                const gpsLongitude = tags['GPSLongitude'];
+                const gpsLatRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
+                const gpsLonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
+                
+                console.log('GPSLatitude raw:', gpsLatitude);
+                console.log('GPSLongitude raw:', gpsLongitude);
+                
+                // Convert coordinates
                 let latitude = null;
                 let longitude = null;
+                let locationText = 'No GPS data found';
                 let mapsLink = null;
-                let gpsStatus = 'No GPS data found';
-                let gpsStatusClass = 'error';
                 
-                if (tags['GPSLatitude'] && tags['GPSLongitude']) {
-                    const latArray = tags['GPSLatitude'].value;
-                    const lonArray = tags['GPSLongitude'].value;
-                    const latRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
-                    const lonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
+                if (gpsLatitude && gpsLongitude) {
+                    // Try to get the value - it could be in .value or .description
+                    const latValue = gpsLatitude.value || gpsLatitude.description;
+                    const lonValue = gpsLongitude.value || gpsLongitude.description;
                     
-                    latitude = convertGPSCoordinate(latArray, latRef);
-                    longitude = convertGPSCoordinate(lonArray, lonRef);
+                    latitude = convertGPSCoordinate(latValue, gpsLatRef);
+                    longitude = convertGPSCoordinate(lonValue, gpsLonRef);
                     
                     if (latitude !== null && longitude !== null) {
-                        gpsStatus = 'GPS data found and converted';
-                        gpsStatusClass = 'success';
+                        locationText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
                         mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
                     } else {
-                        gpsStatus = 'GPS data found but conversion failed';
-                        gpsStatusClass = 'warning';
+                        locationText = 'GPS data found but could not convert';
                     }
                 }
                 
-                // 2. EXTRACT OTHER DATA
+                // Extract other data
                 const dateTime = tags['DateTimeOriginal']?.description || 
                                tags['DateTime']?.description || 
                                'Not found';
                 
-                const cameraMake = tags['Make']?.description || '';
-                const cameraModel = tags['Model']?.description || '';
-                const camera = cameraMake && cameraModel ? `${cameraMake} ${cameraModel}` : 
-                             cameraMake || cameraModel || 'Not found';
+                const camera = tags['Model']?.description || 
+                             tags['Make']?.description || 
+                             'Not found';
                 
-                // 3. COUNT GPS TAGS
+                // Count GPS tags
                 const allTags = Object.keys(tags);
                 const gpsTags = allTags.filter(tag => tag.includes('GPS') || tag.includes('gps'));
                 
-                // 4. BUILD OUTPUT HTML
+                // Build output
                 let html = `
                     <div class="info-card">
-                        <h3 style="color: #2c3e50; margin-top: 0;">📋 Photo Information</h3>
+                        <h3>Photo Information</h3>
                         
                         <div class="info-row">
-                            <div class="info-label">📁 File Name:</div>
-                            <div class="info-value">${file.name}</div>
-                        </div>
-                        
-                        <div class="info-row">
-                            <div class="info-label">📏 File Size:</div>
-                            <div class="info-value">${Math.round(file.size/1024)} KB</div>
+                            <div class="info-label">📁 File:</div>
+                            <div>${file.name} (${Math.round(file.size/1024)} KB)</div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">📅 Date & Time:</div>
-                            <div class="info-value ${dateTime !== 'Not found' ? 'success' : 'error'}">
-                                ${dateTime}
-                            </div>
+                            <div>${dateTime}</div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">📷 Camera:</div>
-                            <div class="info-value">${camera}</div>
+                            <div>${camera}</div>
                         </div>
                         
                         <div class="info-row">
-                            <div class="info-label">📍 GPS Status:</div>
-                            <div class="info-value ${gpsStatusClass}">${gpsStatus}</div>
-                        </div>`;
-                
-                // Add GPS coordinates if available
-                if (latitude !== null && longitude !== null) {
-                    html += `
-                        <div class="info-row">
-                            <div class="info-label">🌐 Coordinates:</div>
-                            <div class="info-value">
-                                <div class="success">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</div>
-                                <a href="${mapsLink}" target="_blank" class="maps-button">
-                                    🗺️ View on Google Maps
-                                </a>
+                            <div class="info-label">📍 Location:</div>
+                            <div class="${latitude ? 'success' : 'error'}">
+                                ${locationText}
+                                ${mapsLink ? `<br><a href="${mapsLink}" target="_blank">View on Google Maps</a>` : ''}
                             </div>
                         </div>`;
-                }
                 
-                // Add debug section
+                // Add debug info
                 html += `
-                        <div class="debug-section">
-                            <div class="debug-title">🔍 Debug Information</div>
+                        <div class="debug">
+                            <h4>Debug Information:</h4>
+                            <p><strong>EXIF tags found:</strong> ${allTags.length}</p>
+                            <p><strong>GPS tags found:</strong> ${gpsTags.length}</p>
+                            <p><strong>GPS tag names:</strong> ${gpsTags.join(', ')}</p>
                             
-                            <div class="info-row">
-                                <div class="info-label">Total EXIF Tags:</div>
-                                <div class="info-value">${allTags.length}</div>
-                            </div>
+                            <p><strong>GPSLatitude value:</strong> ${JSON.stringify(gpsLatitude?.value)}</p>
+                            <p><strong>GPSLongitude value:</strong> ${JSON.stringify(gpsLongitude?.value)}</p>
+                            <p><strong>GPSLatitude description:</strong> ${gpsLatitude?.description || 'N/A'}</p>
+                            <p><strong>GPSLongitude description:</strong> ${gpsLongitude?.description || 'N/A'}</p>
                             
-                            <div class="info-row">
-                                <div class="info-label">GPS Tags Found:</div>
-                                <div class="info-value">${gpsTags.length}</div>
-                            </div>
-                            
-                            <div style="margin-top: 15px;">
-                                <div style="font-weight: 600; margin-bottom: 8px;">GPS Tag Names:</div>
-                                <div style="color: #7f8c8d; font-size: 0.9em;">${gpsTags.join(', ')}</div>
-                            </div>`;
-                
-                // Show raw GPS data if available
-                if (tags['GPSLatitude'] && tags['GPSLongitude']) {
-                    html += `
-                            <div style="margin-top: 15px;">
-                                <div style="font-weight: 600; margin-bottom: 8px;">Raw GPS Values:</div>
-                                <div class="gps-raw">
-                                    GPSLatitude: [${tags['GPSLatitude'].value}]<br>
-                                    GPSLongitude: [${tags['GPSLongitude'].value}]<br>
-                                    Latitude Ref: "${tags['GPSLatitudeRef']?.value?.[0] || 'N'}"<br>
-                                    Longitude Ref: "${tags['GPSLongitudeRef']?.value?.[0] || 'E'}"
-                                </div>
-                            </div>`;
-                }
-                
-                html += `
-                            <div style="margin-top: 15px; color: #7f8c8d; font-size: 0.9em;">
-                                <strong>💡 Tip:</strong> If location isn't showing, check the browser console (F12) for detailed EXIF data.
-                            </div>
+                            <p><strong>Check browser console (F12) for full EXIF data</strong></p>
                         </div>
                     </div>`;
                 
-                outputDiv.innerHTML = html;
-                
-                // Log important data to console
-                console.log('=== GPS DATA ===');
-                console.log('Latitude array:', tags['GPSLatitude']?.value);
-                console.log('Longitude array:', tags['GPSLongitude']?.value);
-                console.log('Converted latitude:', latitude);
-                console.log('Converted longitude:', longitude);
+                infoDiv.innerHTML = html;
                 
             } catch (error) {
-                console.error('Error reading EXIF:', error);
-                outputDiv.innerHTML = `
+                console.error('Error:', error);
+                infoDiv.innerHTML = `
                     <div class="info-card">
-                        <h3 class="error">❌ Error Reading Photo</h3>
-                        <p>Error: ${error.message}</p>
-                        <p style="color: #7f8c8d; margin-top: 15px;">
-                            This might happen if the photo is corrupted, in an unsupported format, 
-                            or has been heavily edited by an app that removed EXIF data.
-                        </p>
+                        <h3 class="error">Error Reading Photo</h3>
+                        <p>${error.message}</p>
+                        <p>Check the browser console (F12) for more details.</p>
                     </div>`;
             }
         });
