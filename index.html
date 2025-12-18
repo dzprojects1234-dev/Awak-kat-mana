@@ -1,158 +1,329 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GPS Data Inspector</title>
+    <title>Photo GPS Verifier</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        .test-box { 
-            background: #f0f8ff; 
-            padding: 20px; 
-            border: 2px solid #4CAF50;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .upload-box {
+            border: 3px dashed #4CAF50;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
             border-radius: 10px;
+            background: #f9f9f9;
+        }
+        input[type="file"] {
+            font-size: 16px;
+            padding: 10px;
+            width: 100%;
+        }
+        .result-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 25px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .alert-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 5px solid #dc3545;
+        }
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border-left: 5px solid #17a2b8;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 5px solid #28a745;
+        }
+        .coordinate-display {
+            font-family: 'Courier New', monospace;
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-size: 1.1em;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4285f4;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 5px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #3367d6;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .map-container {
+            height: 300px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
             margin: 20px 0;
         }
-        .result { 
-            background: #fff3cd; 
-            padding: 15px; 
-            margin: 15px 0;
-            border-left: 4px solid #ffc107;
+        .data-table th, .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
         }
-        .zero-data { 
-            background: #f8d7da; 
-            color: #721c24;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
         }
-        .coordinates { 
-            font-family: monospace; 
-            background: #333; 
-            color: white; 
-            padding: 10px; 
-            margin: 10px 0;
+        .tag-badge {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 0.85em;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
-    <h2>🔍 GPS Data Inspector</h2>
-    <p>This tool will show you what's really in your photo's GPS data.</p>
-    
-    <input type="file" id="fileInput" accept="image/*">
-    
-    <div id="results"></div>
+    <div class="container">
+        <h1>📍 Photo GPS Data Verifier</h1>
+        <p>Upload any photo to check if its GPS data is intact or has been removed/zeroed out.</p>
+        
+        <div class="upload-box">
+            <h3>📤 Upload Your Photo</h3>
+            <input type="file" id="photoUpload" accept="image/*">
+            <p style="color: #666; margin-top: 10px;">Supports JPEG, PNG, HEIC formats</p>
+        </div>
+        
+        <div id="results"></div>
+        
+        <!-- Manual GPS Verifier Section -->
+        <div class="result-card">
+            <h2>🧮 Manual GPS Coordinate Checker</h2>
+            <div class="alert alert-info">
+                <strong>Your Known Coordinates:</strong> 1.373782, 103.741952
+            </div>
+            
+            <div class="coordinate-display">
+                <strong>Latitude Breakdown:</strong><br>
+                1.373782° N = 1° 22' 25.6152"<br>
+                • Degrees: 1<br>
+                • Minutes: 22<br>
+                • Seconds: 25.6152<br><br>
+                
+                <strong>Longitude Breakdown:</strong><br>
+                103.741952° E = 103° 44' 31.0272"<br>
+                • Degrees: 103<br>
+                • Minutes: 44<br>
+                • Seconds: 31.0272
+            </div>
+            
+            <div class="alert alert-success">
+                <strong>✅ What SHOULD be in your EXIF data:</strong><br>
+                GPSLatitude: [[1,1], [22,1], [256152,10000]]<br>
+                GPSLongitude: [[103,1], [44,1], [310272,10000]]
+            </div>
+            
+            <div class="alert alert-danger">
+                <strong>❌ What IS in your EXIF data:</strong><br>
+                GPSLatitude: [[0,0], [0,0], [0,0]]<br>
+                GPSLongitude: [[0,0], [0,0], [0,0]]
+            </div>
+            
+            <a href="https://www.google.com/maps?q=1.373782,103.741952" target="_blank" class="btn">
+                🗺️ Verify on Google Maps
+            </a>
+        </div>
+    </div>
 
     <script>
-        document.getElementById('fileInput').addEventListener('change', async function(event) {
+        // Your known coordinates
+        const KNOWN_LAT = 1.373782;
+        const KNOWN_LON = 103.741952;
+        
+        document.getElementById('photoUpload').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
             
             const resultsDiv = document.getElementById('results');
-            resultsDiv.innerHTML = '<div class="test-box">Reading photo data...</div>';
+            resultsDiv.innerHTML = '<div class="result-card"><p>🔍 Analyzing photo data...</p></div>';
             
             try {
-                const tags = await ExifReader.load(file);
+                const tags = await ExifReader.load(file, { includeUnknown: true });
                 
-                // Get ALL GPS-related data
-                const gpsTags = {};
-                Object.keys(tags).forEach(key => {
-                    if (key.includes('GPS') || key.includes('gps')) {
-                        gpsTags[key] = tags[key];
-                    }
-                });
-                
-                // Your known coordinates for comparison
-                const knownLat = 1.373782;
-                const knownLon = 103.741952;
-                
-                // Check if GPS data is all zeros
+                // Get GPS data
                 const gpsLat = tags['GPSLatitude'];
                 const gpsLon = tags['GPSLongitude'];
+                const latRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
+                const lonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
                 
-                let isZeroData = false;
-                if (gpsLat && gpsLat.value && gpsLon && gpsLon.value) {
-                    // Check if all values are zero
-                    const allZero = gpsLat.value.flat().every(v => v === 0) && 
-                                   gpsLon.value.flat().every(v => v === 0);
-                    isZeroData = allZero;
-                }
+                // Check if data is zeroed
+                const isZeroed = gpsLat && gpsLat.value && gpsLon && gpsLon.value &&
+                               gpsLat.value.flat().every(v => v === 0) && 
+                               gpsLon.value.flat().every(v => v === 0);
+                
+                // Count GPS tags
+                const gpsTags = Object.keys(tags).filter(key => key.includes('GPS'));
                 
                 // Build results
-                let html = '<div class="test-box">';
-                html += '<h3>📊 Analysis Results</h3>';
+                let html = '<div class="result-card">';
+                html += '<h2>📊 Analysis Results</h2>';
                 
-                html += '<div class="coordinates">';
-                html += '<strong>Your known coordinates:</strong><br>';
-                html += `Latitude: ${knownLat}<br>`;
-                html += `Longitude: ${knownLon}`;
-                html += '</div>';
+                // File info
+                html += '<table class="data-table">';
+                html += '<tr><th>File Name</th><td>' + file.name + '</td></tr>';
+                html += '<tr><th>File Size</th><td>' + Math.round(file.size/1024) + ' KB</td></tr>';
+                html += '<tr><th>EXIF Tags Found</th><td>' + Object.keys(tags).length + '</td></tr>';
+                html += '<tr><th>GPS Tags Found</th><td>' + gpsTags.length + '</td></tr>';
+                html += '</table>';
                 
-                if (isZeroData) {
-                    html += '<div class="zero-data">';
-                    html += '<strong>⚠️ PROBLEM DETECTED:</strong><br>';
-                    html += 'Your photo\'s GPS data contains ALL ZEROS: [[0,0],[0,0],[0,0]]<br>';
-                    html += 'This means the actual coordinates have been removed or corrupted.';
+                // GPS Status
+                if (isZeroed) {
+                    html += '<div class="alert alert-danger">';
+                    html += '<h3>❌ GPS Data Issue Detected</h3>';
+                    html += '<p><strong>Problem:</strong> GPS coordinates have been zeroed out</p>';
+                    html += '<p><strong>Found:</strong> ' + JSON.stringify(gpsLat.value) + '</p>';
+                    html += '<p><strong>Expected:</strong> Non-zero coordinates</p>';
+                    html += '<p><strong>Cause:</strong> Photo was likely processed through an app that strips location data</p>';
+                    html += '</div>';
+                } else if (gpsLat && gpsLon) {
+                    html += '<div class="alert alert-success">';
+                    html += '<h3>✅ GPS Data Found</h3>';
+                    html += '<p>Coordinates: ' + JSON.stringify(gpsLat.value) + '</p>';
+                    html += '<p>This photo has intact GPS data!</p>';
+                    html += '</div>';
+                } else {
+                    html += '<div class="alert alert-info">';
+                    html += '<h3>ℹ️ No GPS Data Found</h3>';
+                    html += '<p>This photo does not contain any GPS location data.</p>';
                     html += '</div>';
                 }
                 
-                html += '<div class="result">';
-                html += '<strong>📋 GPS Data Found:</strong><br>';
-                html += `Total GPS tags: ${Object.keys(gpsTags).length}<br>`;
+                // GPS Tags List
+                if (gpsTags.length > 0) {
+                    html += '<h3>📋 GPS Tags in Photo:</h3>';
+                    html += '<div style="margin: 15px 0;">';
+                    gpsTags.forEach(tag => {
+                        html += '<span class="tag-badge">' + tag + '</span>';
+                    });
+                    html += '</div>';
+                }
                 
-                // Show all GPS tags
-                Object.keys(gpsTags).forEach(tagName => {
-                    const tag = gpsTags[tagName];
-                    html += `<br><strong>${tagName}:</strong> `;
+                // Detailed GPS Data
+                if (gpsLat || gpsLon) {
+                    html += '<h3>🔍 Detailed GPS Data:</h3>';
+                    html += '<table class="data-table">';
                     
-                    if (tag.value && Array.isArray(tag.value)) {
-                        html += `Value: ${JSON.stringify(tag.value)}<br>`;
+                    if (gpsLat) {
+                        html += '<tr><th>GPSLatitude</th><td>' + JSON.stringify(gpsLat.value) + '</td></tr>';
+                        html += '<tr><th>GPSLatitudeRef</th><td>' + latRef + '</td></tr>';
                     }
-                    if (tag.description) {
-                        html += `Description: ${tag.description}<br>`;
+                    
+                    if (gpsLon) {
+                        html += '<tr><th>GPSLongitude</th><td>' + JSON.stringify(gpsLon.value) + '</td></tr>';
+                        html += '<tr><th>GPSLongitudeRef</th><td>' + lonRef + '</td></tr>';
                     }
-                });
+                    
+                    html += '</table>';
+                }
                 
+                // Manual Verification Section
+                html += '<div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">';
+                html += '<h3>🧪 Manual Verification</h3>';
+                html += '<div class="coordinate-display">';
+                html += '<strong>Your Known Location:</strong><br>';
+                html += 'Latitude: ' + KNOWN_LAT + '<br>';
+                html += 'Longitude: ' + KNOWN_LON + '<br><br>';
+                html += '<strong>Google Maps Link:</strong><br>';
+                html += '<a href="https://www.google.com/maps?q=' + KNOWN_LAT + ',' + KNOWN_LON + '" target="_blank" style="color: #4CAF50;">';
+                html += 'https://www.google.com/maps?q=' + KNOWN_LAT + ',' + KNOWN_LON;
+                html += '</a>';
                 html += '</div>';
                 
-                html += '<div class="result">';
-                html += '<strong>🔧 What This Means:</strong><br>';
-                html += '1. Your photo originally had GPS: 1.373782, 103.741952<br>';
-                html += '2. Something removed or corrupted the GPS data<br>';
-                html += '3. Now it shows all zeros instead of the real coordinates<br><br>';
-                html += '<strong>Possible causes:</strong><br>';
-                html += '✓ Photo edited in social media app (Facebook, WhatsApp, Instagram)<br>';
-                html += '✓ Photo transferred via messaging app<br>';
-                html += '✓ Privacy setting that strips location data<br>';
-                html += '✓ Corrupted file during transfer';
+                html += '<a href="https://www.google.com/maps?q=' + KNOWN_LAT + ',' + KNOWN_LON + '" target="_blank" class="btn btn-success">';
+                html += '🗺️ Open in Google Maps';
+                html += '</a>';
                 html += '</div>';
                 
-                html += '<div class="result">';
-                html += '<strong>🛠️ How to Fix:</strong><br>';
-                html += '1. Find the ORIGINAL photo from your phone\'s Camera folder<br>';
-                html += '2. Don\'t use photos from social/media apps<br>';
-                html += '3. Make sure location services are ON in camera settings<br>';
-                html += '4. Try a brand new photo taken right now';
-                html += '</div>';
-                
-                html += '</div>';
+                html += '</div>'; // Close result-card
                 
                 resultsDiv.innerHTML = html;
                 
-                // Log to console for detailed analysis
-                console.log('=== DETAILED GPS ANALYSIS ===');
-                console.log('Known coordinates should be:', knownLat, knownLon);
-                console.log('Actual GPS data found:', {
-                    GPSLatitude: gpsLat?.value,
-                    GPSLongitude: gpsLon?.value,
-                    GPSLatitudeRef: tags['GPSLatitudeRef']?.value,
-                    GPSLongitudeRef: tags['GPSLongitudeRef']?.value
-                });
+                // Console log for debugging
+                console.log('=== PHOTO ANALYSIS ===');
+                console.log('File:', file.name);
+                console.log('GPS Zeroed?:', isZeroed);
+                console.log('GPS Latitude:', gpsLat?.value);
+                console.log('GPS Longitude:', gpsLon?.value);
+                console.log('Known coordinates:', KNOWN_LAT + ', ' + KNOWN_LON);
                 
             } catch (error) {
-                resultsDiv.innerHTML = `<div class="zero-data">Error: ${error.message}</div>`;
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="result-card">
+                        <div class="alert alert-danger">
+                            <h3>❌ Error Reading Photo</h3>
+                            <p>${error.message}</p>
+                            <p>Try using a different photo or check the file format.</p>
+                        </div>
+                    </div>`;
             }
         });
+        
+        // Initial results
+        document.getElementById('results').innerHTML = `
+            <div class="result-card">
+                <h3>📝 How to Use This Tool</h3>
+                <ol>
+                    <li><strong>Upload a photo</strong> from your device</li>
+                    <li><strong>Check the analysis</strong> - see if GPS data is intact or zeroed</li>
+                    <li><strong>Compare with known coordinates</strong> if you have them</li>
+                    <li><strong>Verify on Google Maps</strong> using the provided link</li>
+                </ol>
+                <p><strong>Common Causes of Zeroed GPS Data:</strong></p>
+                <ul>
+                    <li>Photos from WhatsApp, Facebook, Instagram</li>
+                    <li>Photos edited in social media apps</li>
+                    <li>Privacy settings that strip location</li>
+                    <li>File corruption during transfer</li>
+                </ul>
+            </div>`;
     </script>
 </body>
 </html>
