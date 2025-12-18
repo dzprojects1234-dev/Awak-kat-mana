@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Details Viewer - Fixed</title>
+    <title>Photo GPS Viewer - Fixed Rational Numbers</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
@@ -31,9 +31,11 @@
         .info-label {
             font-weight: bold;
             color: #2c3e50;
+            width: 120px;
+            display: inline-block;
         }
+        .success { color: #28a745; font-weight: bold; }
         .error { color: #dc3545; }
-        .success { color: #28a745; }
         .debug {
             background: #e9ecef;
             padding: 15px;
@@ -42,11 +44,21 @@
             font-family: monospace;
             font-size: 0.9em;
         }
+        .maps-btn {
+            display: inline-block;
+            background: #4285f4;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 10px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
-    <h2>📸 Photo Details Viewer</h2>
-    <p>Upload a photo to see its EXIF data including GPS location.</p>
+    <h2>📸 Photo GPS Viewer</h2>
+    <p>Upload a photo to see its GPS location (now with rational number support).</p>
     
     <input type="file" id="photoUpload" accept="image/*" />
     <img id="preview" style="display:none;" />
@@ -58,60 +70,44 @@
     </div>
 
     <script>
-        // FIXED GPS CONVERSION FUNCTION
-        function convertGPSCoordinate(gpsValue, ref) {
-            console.log('Converting GPS value:', gpsValue, 'Ref:', ref);
+        // FIXED: CONVERT RATIONAL NUMBER GPS FORMAT
+        // Your GPS data is in format: [[numerator1, denominator1], [numerator2, denominator2], [numerator3, denominator3]]
+        function convertRationalGPS(rationalArray, ref) {
+            console.log('Converting rational GPS:', rationalArray, 'Ref:', ref);
             
-            // Handle different GPS data formats
-            if (!gpsValue) {
-                console.log('No GPS value provided');
+            if (!Array.isArray(rationalArray) || rationalArray.length < 3) {
                 return null;
             }
             
-            // Format 1: Array like [41, 53, 24.48]
-            if (Array.isArray(gpsValue) && gpsValue.length >= 3) {
-                const degrees = Number(gpsValue[0]) || 0;
-                const minutes = Number(gpsValue[1]) || 0;
-                const seconds = Number(gpsValue[2]) || 0;
-                
-                let decimal = degrees + (minutes / 60) + (seconds / 3600);
-                
-                if (ref === 'S' || ref === 'W') {
-                    decimal = -decimal;
-                }
-                
-                console.log(`Converted [${degrees}, ${minutes}, ${seconds}] to ${decimal}`);
-                return decimal;
+            let degrees = 0, minutes = 0, seconds = 0;
+            
+            // Parse degrees (first array element)
+            if (Array.isArray(rationalArray[0]) && rationalArray[0].length >= 2) {
+                const [num, den] = rationalArray[0];
+                degrees = den !== 0 ? num / den : 0;
             }
             
-            // Format 2: Already a decimal number
-            if (typeof gpsValue === 'number') {
-                let decimal = gpsValue;
-                if (ref === 'S' || ref === 'W') {
-                    decimal = -decimal;
-                }
-                console.log(`Using number directly: ${decimal}`);
-                return decimal;
+            // Parse minutes (second array element)
+            if (Array.isArray(rationalArray[1]) && rationalArray[1].length >= 2) {
+                const [num, den] = rationalArray[1];
+                minutes = den !== 0 ? num / den : 0;
             }
             
-            // Format 3: String representation
-            if (typeof gpsValue === 'string') {
-                try {
-                    let decimal = parseFloat(gpsValue);
-                    if (!isNaN(decimal)) {
-                        if (ref === 'S' || ref === 'W') {
-                            decimal = -decimal;
-                        }
-                        console.log(`Parsed string "${gpsValue}" to ${decimal}`);
-                        return decimal;
-                    }
-                } catch (e) {
-                    console.log('Failed to parse string:', e);
-                }
+            // Parse seconds (third array element)
+            if (Array.isArray(rationalArray[2]) && rationalArray[2].length >= 2) {
+                const [num, den] = rationalArray[2];
+                seconds = den !== 0 ? num / den : 0;
             }
             
-            console.log('Unknown GPS format:', typeof gpsValue, gpsValue);
-            return null;
+            console.log(`Parsed: ${degrees}°, ${minutes}', ${seconds}"`);
+            
+            let decimal = degrees + (minutes / 60) + (seconds / 3600);
+            
+            if (ref === 'S' || ref === 'W') {
+                decimal = -decimal;
+            }
+            
+            return decimal;
         }
         
         // MAIN FUNCTION
@@ -135,13 +131,12 @@
             try {
                 const tags = await ExifReader.load(file, { includeUnknown: true });
                 
-                // DEBUG: Log all GPS-related tags
-                console.log('=== ALL GPS TAGS ===');
-                Object.keys(tags).forEach(key => {
-                    if (key.includes('GPS') || key.includes('gps')) {
-                        console.log(`${key}:`, tags[key]);
-                    }
-                });
+                // Log GPS data for debugging
+                console.log('=== GPS DATA ===');
+                console.log('GPSLatitude:', tags['GPSLatitude']);
+                console.log('GPSLongitude:', tags['GPSLongitude']);
+                console.log('GPSLatitudeRef:', tags['GPSLatitudeRef']);
+                console.log('GPSLongitudeRef:', tags['GPSLongitudeRef']);
                 
                 // Extract GPS data
                 const gpsLatitude = tags['GPSLatitude'];
@@ -149,28 +144,51 @@
                 const gpsLatRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
                 const gpsLonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
                 
-                console.log('GPSLatitude raw:', gpsLatitude);
-                console.log('GPSLongitude raw:', gpsLongitude);
-                
-                // Convert coordinates
+                // Convert coordinates using rational number parser
                 let latitude = null;
                 let longitude = null;
                 let locationText = 'No GPS data found';
                 let mapsLink = null;
                 
-                if (gpsLatitude && gpsLongitude) {
-                    // Try to get the value - it could be in .value or .description
-                    const latValue = gpsLatitude.value || gpsLatitude.description;
-                    const lonValue = gpsLongitude.value || gpsLongitude.description;
-                    
-                    latitude = convertGPSCoordinate(latValue, gpsLatRef);
-                    longitude = convertGPSCoordinate(lonValue, gpsLonRef);
+                if (gpsLatitude && gpsLongitude && gpsLatitude.value && gpsLongitude.value) {
+                    latitude = convertRationalGPS(gpsLatitude.value, gpsLatRef);
+                    longitude = convertRationalGPS(gpsLongitude.value, gpsLonRef);
                     
                     if (latitude !== null && longitude !== null) {
                         locationText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
                         mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
-                    } else {
-                        locationText = 'GPS data found but could not convert';
+                    }
+                }
+                
+                // Try alternative method if first fails
+                if ((latitude === null || longitude === null) && gpsLatitude && gpsLongitude) {
+                    console.log('Trying alternative GPS parsing...');
+                    
+                    // Sometimes the data is in the description field
+                    if (gpsLatitude.description && gpsLongitude.description) {
+                        const latMatch = gpsLatitude.description.match(/[\d\.]+/g);
+                        const lonMatch = gpsLongitude.description.match(/[\d\.]+/g);
+                        
+                        if (latMatch && latMatch.length >= 3) {
+                            const deg = parseFloat(latMatch[0]) || 0;
+                            const min = parseFloat(latMatch[1]) || 0;
+                            const sec = parseFloat(latMatch[2]) || 0;
+                            latitude = deg + (min / 60) + (sec / 3600);
+                            if (gpsLatRef === 'S') latitude = -latitude;
+                        }
+                        
+                        if (lonMatch && lonMatch.length >= 3) {
+                            const deg = parseFloat(lonMatch[0]) || 0;
+                            const min = parseFloat(lonMatch[1]) || 0;
+                            const sec = parseFloat(lonMatch[2]) || 0;
+                            longitude = deg + (min / 60) + (sec / 3600);
+                            if (gpsLonRef === 'W') longitude = -longitude;
+                        }
+                        
+                        if (latitude !== null && longitude !== null) {
+                            locationText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+                            mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                        }
                     }
                 }
                 
@@ -183,56 +201,57 @@
                              tags['Make']?.description || 
                              'Not found';
                 
-                // Count GPS tags
-                const allTags = Object.keys(tags);
-                const gpsTags = allTags.filter(tag => tag.includes('GPS') || tag.includes('gps'));
-                
                 // Build output
                 let html = `
                     <div class="info-card">
                         <h3>Photo Information</h3>
                         
                         <div class="info-row">
-                            <div class="info-label">📁 File:</div>
-                            <div>${file.name} (${Math.round(file.size/1024)} KB)</div>
+                            <span class="info-label">📁 File:</span>
+                            ${file.name} (${Math.round(file.size/1024)} KB)
                         </div>
                         
                         <div class="info-row">
-                            <div class="info-label">📅 Date & Time:</div>
-                            <div>${dateTime}</div>
+                            <span class="info-label">📅 Date & Time:</span>
+                            ${dateTime}
                         </div>
                         
                         <div class="info-row">
-                            <div class="info-label">📷 Camera:</div>
-                            <div>${camera}</div>
+                            <span class="info-label">📷 Camera:</span>
+                            ${camera}
                         </div>
                         
                         <div class="info-row">
-                            <div class="info-label">📍 Location:</div>
+                            <span class="info-label">📍 Location:</span>
                             <div class="${latitude ? 'success' : 'error'}">
                                 ${locationText}
-                                ${mapsLink ? `<br><a href="${mapsLink}" target="_blank">View on Google Maps</a>` : ''}
+                                ${mapsLink ? `<br><a href="${mapsLink}" target="_blank" class="maps-btn">🗺️ View on Google Maps</a>` : ''}
                             </div>
-                        </div>`;
-                
-                // Add debug info
-                html += `
+                        </div>
+                        
                         <div class="debug">
                             <h4>Debug Information:</h4>
-                            <p><strong>EXIF tags found:</strong> ${allTags.length}</p>
-                            <p><strong>GPS tags found:</strong> ${gpsTags.length}</p>
-                            <p><strong>GPS tag names:</strong> ${gpsTags.join(', ')}</p>
-                            
+                            <p><strong>EXIF tags found:</strong> ${Object.keys(tags).length}</p>
+                            <p><strong>GPS tags found:</strong> ${Object.keys(tags).filter(tag => tag.includes('GPS')).length}</p>
                             <p><strong>GPSLatitude value:</strong> ${JSON.stringify(gpsLatitude?.value)}</p>
                             <p><strong>GPSLongitude value:</strong> ${JSON.stringify(gpsLongitude?.value)}</p>
-                            <p><strong>GPSLatitude description:</strong> ${gpsLatitude?.description || 'N/A'}</p>
-                            <p><strong>GPSLongitude description:</strong> ${gpsLongitude?.description || 'N/A'}</p>
-                            
-                            <p><strong>Check browser console (F12) for full EXIF data</strong></p>
+                            <p><strong>Latitude Ref:</strong> ${gpsLatRef}</p>
+                            <p><strong>Longitude Ref:</strong> ${gpsLonRef}</p>
+                            <p><strong>Expected coordinates:</strong> ~1.373782, 103.741952</p>
                         </div>
                     </div>`;
                 
                 infoDiv.innerHTML = html;
+                
+                // Manual calculation based on your coordinates
+                console.log('\n=== MANUAL CALCULATION ===');
+                console.log('Your coordinates: 1.373782, 103.741952');
+                console.log('This means:');
+                console.log('Latitude: 1° 22' 25.6152" N');
+                console.log('Longitude: 103° 44' 31.0272" E');
+                console.log('\nSo your GPS arrays should be approximately:');
+                console.log('GPSLatitude: [[1,1], [22,1], [256152,10000]]');
+                console.log('GPSLongitude: [[103,1], [44,1], [310272,10000]]');
                 
             } catch (error) {
                 console.error('Error:', error);
@@ -240,7 +259,6 @@
                     <div class="info-card">
                         <h3 class="error">Error Reading Photo</h3>
                         <p>${error.message}</p>
-                        <p>Check the browser console (F12) for more details.</p>
                     </div>`;
             }
         });
