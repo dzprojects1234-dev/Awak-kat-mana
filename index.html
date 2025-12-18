@@ -1,277 +1,158 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simple Photo GPS Viewer</title>
+    <title>GPS Data Inspector</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        h2 { color: #333; }
-        .upload-area {
-            border: 3px dashed #4CAF50;
-            padding: 30px;
-            text-align: center;
-            margin: 20px 0;
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-box { 
+            background: #f0f8ff; 
+            padding: 20px; 
+            border: 2px solid #4CAF50;
             border-radius: 10px;
-            background: #f9f9f9;
+            margin: 20px 0;
         }
-        #fileInput {
-            font-size: 18px;
+        .result { 
+            background: #fff3cd; 
+            padding: 15px; 
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .zero-data { 
+            background: #f8d7da; 
+            color: #721c24;
             padding: 10px;
-        }
-        #previewContainer {
-            margin: 20px 0;
-            text-align: center;
-        }
-        #photoPreview {
-            max-width: 100%;
-            max-height: 400px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .info-box {
-            background: #e8f5e9;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 5px solid #4CAF50;
-        }
-        .data-row {
-            display: flex;
             margin: 10px 0;
-            padding: 8px 0;
-            border-bottom: 1px solid #ddd;
-        }
-        .data-label {
-            font-weight: bold;
-            width: 150px;
-            color: #555;
-        }
-        .data-value {
-            flex: 1;
-            color: #333;
-        }
-        .gps-coordinate {
-            font-family: monospace;
-            background: #333;
-            color: #fff;
-            padding: 8px 12px;
             border-radius: 5px;
-            margin: 5px 0;
         }
-        .maps-link {
-            display: inline-block;
-            background: #4285f4;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            text-decoration: none;
+        .coordinates { 
+            font-family: monospace; 
+            background: #333; 
+            color: white; 
+            padding: 10px; 
             margin: 10px 0;
-            font-weight: bold;
         }
-        .debug-box {
-            background: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 12px;
-            overflow-x: auto;
-        }
-        .status {
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-weight: bold;
-        }
-        .loading { background: #fff3cd; color: #856404; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <h2>📷 Simple Photo GPS Viewer</h2>
-    <p>Upload any photo to see its GPS location and EXIF data</p>
+    <h2>🔍 GPS Data Inspector</h2>
+    <p>This tool will show you what's really in your photo's GPS data.</p>
     
-    <div class="upload-area">
-        <input type="file" id="fileInput" accept="image/*">
-        <p style="color: #666; margin-top: 10px;">Select a photo from your device</p>
-    </div>
+    <input type="file" id="fileInput" accept="image/*">
     
-    <div id="previewContainer" style="display: none;">
-        <h3>Photo Preview</h3>
-        <img id="photoPreview" alt="Photo Preview">
-    </div>
-    
-    <div id="infoContainer">
-        <!-- Info will be displayed here -->
-    </div>
+    <div id="results"></div>
 
     <script>
-        // Get DOM elements
-        const fileInput = document.getElementById('fileInput');
-        const previewContainer = document.getElementById('previewContainer');
-        const photoPreview = document.getElementById('photoPreview');
-        const infoContainer = document.getElementById('infoContainer');
-        
-        // Helper function to convert rational GPS arrays
-        function parseGPSRational(rationalArray, ref) {
-            if (!rationalArray || !Array.isArray(rationalArray)) return null;
-            
-            let total = 0;
-            for (let i = 0; i < Math.min(3, rationalArray.length); i++) {
-                if (Array.isArray(rationalArray[i]) && rationalArray[i].length >= 2) {
-                    const numerator = rationalArray[i][0];
-                    const denominator = rationalArray[i][1];
-                    if (denominator !== 0) {
-                        const value = numerator / denominator;
-                        if (i === 0) total += value; // degrees
-                        if (i === 1) total += value / 60; // minutes
-                        if (i === 2) total += value / 3600; // seconds
-                    }
-                }
-            }
-            
-            if (ref === 'S' || ref === 'W') {
-                total = -total;
-            }
-            
-            return total;
-        }
-        
-        // Function to display status
-        function showStatus(message, type) {
-            infoContainer.innerHTML = `<div class="status ${type}">${message}</div>`;
-        }
-        
-        // Main function to handle file upload
-        fileInput.addEventListener('change', async function(event) {
+        document.getElementById('fileInput').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
             
-            // Show loading status
-            showStatus('Loading photo and reading data...', 'loading');
-            
-            // Reset preview
-            previewContainer.style.display = 'none';
-            photoPreview.src = '';
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-box">Reading photo data...</div>';
             
             try {
-                // Create a simple preview (no FileReader needed)
-                const objectURL = URL.createObjectURL(file);
-                photoPreview.src = objectURL;
-                previewContainer.style.display = 'block';
-                
-                // Read EXIF data
                 const tags = await ExifReader.load(file);
                 
-                // Log all tags for debugging
-                console.log('All EXIF tags:', tags);
+                // Get ALL GPS-related data
+                const gpsTags = {};
+                Object.keys(tags).forEach(key => {
+                    if (key.includes('GPS') || key.includes('gps')) {
+                        gpsTags[key] = tags[key];
+                    }
+                });
                 
-                // Extract GPS data
+                // Your known coordinates for comparison
+                const knownLat = 1.373782;
+                const knownLon = 103.741952;
+                
+                // Check if GPS data is all zeros
                 const gpsLat = tags['GPSLatitude'];
                 const gpsLon = tags['GPSLongitude'];
-                const latRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
-                const lonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
                 
-                console.log('GPS Latitude:', gpsLat);
-                console.log('GPS Longitude:', gpsLon);
-                console.log('Lat Ref:', latRef);
-                console.log('Lon Ref:', lonRef);
-                
-                // Try to get coordinates
-                let latitude = null;
-                let longitude = null;
-                let coordinatesText = 'Not available';
-                let mapsLink = null;
-                
+                let isZeroData = false;
                 if (gpsLat && gpsLat.value && gpsLon && gpsLon.value) {
-                    latitude = parseGPSRational(gpsLat.value, latRef);
-                    longitude = parseGPSRational(gpsLon.value, lonRef);
+                    // Check if all values are zero
+                    const allZero = gpsLat.value.flat().every(v => v === 0) && 
+                                   gpsLon.value.flat().every(v => v === 0);
+                    isZeroData = allZero;
+                }
+                
+                // Build results
+                let html = '<div class="test-box">';
+                html += '<h3>📊 Analysis Results</h3>';
+                
+                html += '<div class="coordinates">';
+                html += '<strong>Your known coordinates:</strong><br>';
+                html += `Latitude: ${knownLat}<br>`;
+                html += `Longitude: ${knownLon}`;
+                html += '</div>';
+                
+                if (isZeroData) {
+                    html += '<div class="zero-data">';
+                    html += '<strong>⚠️ PROBLEM DETECTED:</strong><br>';
+                    html += 'Your photo\'s GPS data contains ALL ZEROS: [[0,0],[0,0],[0,0]]<br>';
+                    html += 'This means the actual coordinates have been removed or corrupted.';
+                    html += '</div>';
+                }
+                
+                html += '<div class="result">';
+                html += '<strong>📋 GPS Data Found:</strong><br>';
+                html += `Total GPS tags: ${Object.keys(gpsTags).length}<br>`;
+                
+                // Show all GPS tags
+                Object.keys(gpsTags).forEach(tagName => {
+                    const tag = gpsTags[tagName];
+                    html += `<br><strong>${tagName}:</strong> `;
                     
-                    if (latitude !== null && longitude !== null) {
-                        coordinatesText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-                        mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                    if (tag.value && Array.isArray(tag.value)) {
+                        html += `Value: ${JSON.stringify(tag.value)}<br>`;
                     }
-                }
-                
-                // Get other EXIF data
-                const dateTime = tags['DateTimeOriginal']?.description || 
-                               tags['DateTime']?.description || 
-                               'Not available';
-                
-                const cameraMake = tags['Make']?.description || '';
-                const cameraModel = tags['Model']?.description || '';
-                const camera = cameraMake || cameraModel ? `${cameraMake} ${cameraModel}`.trim() : 'Not available';
-                
-                // Build the display HTML
-                let html = '<div class="info-box">';
-                html += '<h3>📋 Photo Information</h3>';
-                
-                html += '<div class="data-row">';
-                html += '<div class="data-label">File Name:</div>';
-                html += `<div class="data-value">${file.name}</div>`;
-                html += '</div>';
-                
-                html += '<div class="data-row">';
-                html += '<div class="data-label">File Size:</div>';
-                html += `<div class="data-value">${Math.round(file.size/1024)} KB</div>`;
-                html += '</div>';
-                
-                html += '<div class="data-row">';
-                html += '<div class="data-label">Date & Time:</div>';
-                html += `<div class="data-value">${dateTime}</div>`;
-                html += '</div>';
-                
-                html += '<div class="data-row">';
-                html += '<div class="data-label">Camera:</div>';
-                html += `<div class="data-value">${camera}</div>`;
-                html += '</div>';
-                
-                html += '<div class="data-row">';
-                html += '<div class="data-label">GPS Location:</div>';
-                html += '<div class="data-value">';
-                if (latitude !== null && longitude !== null) {
-                    html += `<div class="gps-coordinate">${coordinatesText}</div>`;
-                    html += `<a href="${mapsLink}" target="_blank" class="maps-link">📍 View on Google Maps</a>`;
-                } else {
-                    html += '<span style="color: #dc3545;">GPS data not found in this photo</span>';
-                }
-                html += '</div>';
-                html += '</div>';
-                
-                // Add debug info
-                html += '<div class="debug-box">';
-                html += '<strong>Debug Information:</strong><br>';
-                html += `EXIF tags found: ${Object.keys(tags).length}<br>`;
-                html += `GPS tags: ${Object.keys(tags).filter(t => t.includes('GPS')).join(', ')}<br>`;
-                
-                if (gpsLat && gpsLat.value) {
-                    html += `GPSLatitude value: ${JSON.stringify(gpsLat.value)}<br>`;
-                }
-                if (gpsLon && gpsLon.value) {
-                    html += `GPSLongitude value: ${JSON.stringify(gpsLon.value)}<br>`;
-                }
+                    if (tag.description) {
+                        html += `Description: ${tag.description}<br>`;
+                    }
+                });
                 
                 html += '</div>';
                 
-                html += '</div>'; // Close info-box
+                html += '<div class="result">';
+                html += '<strong>🔧 What This Means:</strong><br>';
+                html += '1. Your photo originally had GPS: 1.373782, 103.741952<br>';
+                html += '2. Something removed or corrupted the GPS data<br>';
+                html += '3. Now it shows all zeros instead of the real coordinates<br><br>';
+                html += '<strong>Possible causes:</strong><br>';
+                html += '✓ Photo edited in social media app (Facebook, WhatsApp, Instagram)<br>';
+                html += '✓ Photo transferred via messaging app<br>';
+                html += '✓ Privacy setting that strips location data<br>';
+                html += '✓ Corrupted file during transfer';
+                html += '</div>';
                 
-                infoContainer.innerHTML = html;
+                html += '<div class="result">';
+                html += '<strong>🛠️ How to Fix:</strong><br>';
+                html += '1. Find the ORIGINAL photo from your phone\'s Camera folder<br>';
+                html += '2. Don\'t use photos from social/media apps<br>';
+                html += '3. Make sure location services are ON in camera settings<br>';
+                html += '4. Try a brand new photo taken right now';
+                html += '</div>';
+                
+                html += '</div>';
+                
+                resultsDiv.innerHTML = html;
+                
+                // Log to console for detailed analysis
+                console.log('=== DETAILED GPS ANALYSIS ===');
+                console.log('Known coordinates should be:', knownLat, knownLon);
+                console.log('Actual GPS data found:', {
+                    GPSLatitude: gpsLat?.value,
+                    GPSLongitude: gpsLon?.value,
+                    GPSLatitudeRef: tags['GPSLatitudeRef']?.value,
+                    GPSLongitudeRef: tags['GPSLongitudeRef']?.value
+                });
                 
             } catch (error) {
-                console.error('Error:', error);
-                showStatus(`Error: ${error.message}`, 'error');
+                resultsDiv.innerHTML = `<div class="zero-data">Error: ${error.message}</div>`;
             }
         });
-        
-        // Initial message
-        showStatus('Select a photo to begin', 'loading');
     </script>
 </body>
 </html>
