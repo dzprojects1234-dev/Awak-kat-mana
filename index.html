@@ -1,96 +1,146 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Photo Details Viewer - Fixed GPS</title>
+    <title>Photo Details Viewer - Complete</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             padding: 20px;
             line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
         }
         #preview {
             max-width: 100%;
             height: auto;
-            margin: 15px 0;
-            border-radius: 8px;
-            border: 1px solid #ddd;
+            margin: 20px 0;
+            border-radius: 10px;
+            border: 2px solid #ddd;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        #info {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-top: 15px;
-        }
-        .detail-item {
-            margin-bottom: 12px;
-            padding: 10px;
+        .info-card {
             background: white;
-            border-radius: 5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
         }
-        .detail-label {
-            font-weight: bold;
-            color: #2c3e50;
-            display: inline-block;
-            width: 160px;
-        }
-        .gps-link {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        .gps-link:hover {
-            text-decoration: underline;
-        }
-        .map-container {
-            margin-top: 15px;
-            height: 300px;
-            background: #e9ecef;
-            border-radius: 8px;
+        .info-row {
             display: flex;
+            margin: 12px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
             align-items: center;
-            justify-content: center;
-            color: #6c757d;
         }
-        .success { color: #198754; }
-        .error { color: #dc3545; }
-        .warning { color: #ffc107; }
+        .info-label {
+            font-weight: 600;
+            color: #2c3e50;
+            width: 140px;
+            min-width: 140px;
+        }
+        .info-value {
+            flex: 1;
+            color: #34495e;
+        }
+        .success { color: #27ae60; font-weight: 600; }
+        .error { color: #e74c3c; }
+        .warning { color: #f39c12; }
+        
+        .maps-button {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 8px;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        .maps-button:hover {
+            background: #2980b9;
+        }
+        
+        .debug-section {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin-top: 25px;
+            border-radius: 0 8px 8px 0;
+        }
+        .debug-title {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .gps-raw {
+            font-family: 'Courier New', monospace;
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        
+        input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            background: #f8f9fa;
+            font-size: 16px;
+            margin: 15px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .info-label {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h2>📸 Photo Details Viewer - With GPS Conversion</h2>
-    <p>Select a photo to see its EXIF data with proper GPS coordinate conversion.</p>
-
-    <input type="file" id="photoUpload" accept="image/*" />
-    <img id="preview" style="display:none;" />
+    <h2>📸 Photo EXIF Data Viewer</h2>
+    <p>Upload any photo to see its hidden metadata including GPS location, date, and camera details.</p>
     
-    <div id="info">
-        <p>No photo selected yet. Details will appear here.</p>
+    <input type="file" id="photoUpload" accept="image/*" />
+    
+    <div id="output">
+        <div class="info-card">
+            <p style="color: #7f8c8d; text-align: center;">Upload a photo to see its details here</p>
+        </div>
     </div>
 
     <script>
-        // GPS CONVERSION FUNCTIONS - THIS IS THE KEY FIX!
-        
-        /**
-         * Convert GPS coordinates from EXIF format to decimal degrees
-         * EXIF stores coordinates as [degrees, minutes, seconds] arrays
-         * Example: [41, 53, 24.48] -> 41.8901333333
-         */
+        // GPS CONVERSION FUNCTION
         function convertGPSCoordinate(gpsArray, ref) {
             if (!gpsArray || !Array.isArray(gpsArray) || gpsArray.length < 3) {
                 return null;
             }
             
-            // Extract degrees, minutes, seconds from the array
             const degrees = gpsArray[0];
             const minutes = gpsArray[1];
             const seconds = gpsArray[2];
             
-            // Convert to decimal degrees
             let decimal = degrees + (minutes / 60) + (seconds / 3600);
             
-            // Apply North/South or East/West reference
             if (ref === 'S' || ref === 'W') {
                 decimal = -decimal;
             }
@@ -98,85 +148,26 @@
             return decimal;
         }
         
-        /**
-         * Format decimal coordinates nicely
-         */
-        function formatCoordinate(decimal, isLatitude) {
-            if (decimal === null) return 'Invalid coordinate';
-            
-            const direction = isLatitude 
-                ? (decimal >= 0 ? 'N' : 'S')
-                : (decimal >= 0 ? 'E' : 'W');
-            
-            const absValue = Math.abs(decimal);
-            return `${absValue.toFixed(6)}° ${direction}`;
-        }
-        
-        /**
-         * Create Google Maps link from coordinates
-         */
-        function createMapsLink(lat, lon) {
-            if (lat === null || lon === null) return null;
-            return `https://www.google.com/maps?q=${lat},${lon}`;
-        }
-        
-        /**
-         * Extract and format date/time from EXIF
-         */
-        function formatDateTime(exifDate) {
-            if (!exifDate) return 'Not found';
-            
-            // EXIF date format is usually "YYYY:MM:DD HH:MM:SS"
-            const dateStr = exifDate.description || exifDate;
-            
-            try {
-                // Replace colons in date part with dashes for proper parsing
-                const normalized = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
-                const date = new Date(normalized);
-                
-                if (isNaN(date.getTime())) {
-                    return dateStr; // Return original if parsing fails
-                }
-                
-                return date.toLocaleString();
-            } catch (e) {
-                return dateStr;
-            }
-        }
-
-        // MAIN EVENT HANDLER
+        // MAIN FUNCTION
         document.getElementById('photoUpload').addEventListener('change', async function(event) {
             const file = event.target.files[0];
             if (!file) return;
-
-            const preview = document.getElementById('preview');
-            const infoDiv = document.getElementById('info');
             
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.src = e.target.result;
-                preview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-
-            infoDiv.innerHTML = '<p><i>Reading photo data...</i></p>';
-
+            const outputDiv = document.getElementById('output');
+            outputDiv.innerHTML = '<div class="info-card"><p style="text-align: center;">Reading photo data...</p></div>';
+            
             try {
                 const tags = await ExifReader.load(file, { includeUnknown: true });
                 
-                console.log('GPS Tags found:', {
-                    GPSLatitude: tags['GPSLatitude']?.value,
-                    GPSLongitude: tags['GPSLongitude']?.value,
-                    GPSLatitudeRef: tags['GPSLatitudeRef']?.value,
-                    GPSLongitudeRef: tags['GPSLongitudeRef']?.value
-                });
+                // Log all tags to console for debugging
+                console.log('All EXIF tags:', tags);
                 
-                // 1. EXTRACT GPS DATA AND CONVERT IT
+                // 1. EXTRACT AND CONVERT GPS DATA
                 let latitude = null;
                 let longitude = null;
-                let locationText = 'No GPS coordinates found';
                 let mapsLink = null;
+                let gpsStatus = 'No GPS data found';
+                let gpsStatusClass = 'error';
                 
                 if (tags['GPSLatitude'] && tags['GPSLongitude']) {
                     const latArray = tags['GPSLatitude'].value;
@@ -184,80 +175,140 @@
                     const latRef = tags['GPSLatitudeRef']?.value?.[0] || 'N';
                     const lonRef = tags['GPSLongitudeRef']?.value?.[0] || 'E';
                     
-                    // CONVERT THE COORDINATES
                     latitude = convertGPSCoordinate(latArray, latRef);
                     longitude = convertGPSCoordinate(lonArray, lonRef);
                     
                     if (latitude !== null && longitude !== null) {
-                        locationText = `${formatCoordinate(latitude, true)}, ${formatCoordinate(longitude, false)}`;
-                        mapsLink = createMapsLink(latitude, longitude);
+                        gpsStatus = 'GPS data found and converted';
+                        gpsStatusClass = 'success';
+                        mapsLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+                    } else {
+                        gpsStatus = 'GPS data found but conversion failed';
+                        gpsStatusClass = 'warning';
                     }
                 }
                 
                 // 2. EXTRACT OTHER DATA
-                const dateTime = formatDateTime(tags['DateTimeOriginal'] || tags['DateTime']);
-                const cameraModel = tags['Model']?.description || tags['Make']?.description || 'Not found';
+                const dateTime = tags['DateTimeOriginal']?.description || 
+                               tags['DateTime']?.description || 
+                               'Not found';
                 
-                // 3. DISPLAY RESULTS
-                let infoHTML = `
-                    <div class="detail-item">
-                        <span class="detail-label">📅 Date & Time:</span>
-                        <span class="${dateTime !== 'Not found' ? 'success' : 'error'}">${dateTime}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📍 GPS Location:</span>`;
+                const cameraMake = tags['Make']?.description || '';
+                const cameraModel = tags['Model']?.description || '';
+                const camera = cameraMake && cameraModel ? `${cameraMake} ${cameraModel}` : 
+                             cameraMake || cameraModel || 'Not found';
                 
-                if (latitude !== null && longitude !== null) {
-                    infoHTML += `
-                        <span class="success">${locationText}</span>
-                        <br><br>
-                        <a href="${mapsLink}" target="_blank" class="gps-link">
-                            📍 View on Google Maps
-                        </a>
-                    `;
-                } else {
-                    infoHTML += `<span class="error">${locationText}</span>`;
-                }
+                // 3. COUNT GPS TAGS
+                const allTags = Object.keys(tags);
+                const gpsTags = allTags.filter(tag => tag.includes('GPS') || tag.includes('gps'));
                 
-                infoHTML += `
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📷 Camera:</span> ${cameraModel}
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">📁 File Info:</span>
-                        ${file.name} (${Math.round(file.size/1024)} KB, ${Object.keys(tags).length} EXIF tags)
-                    </div>
-                `;
-                
-                // Add map placeholder if we have coordinates
-                if (mapsLink) {
-                    infoHTML += `
-                        <div class="map-container">
-                            <div>
-                                <p>📍 Map Preview (Click link above for full map)</p>
-                                <small>Coordinates: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}</small>
+                // 4. BUILD OUTPUT HTML
+                let html = `
+                    <div class="info-card">
+                        <h3 style="color: #2c3e50; margin-top: 0;">📋 Photo Information</h3>
+                        
+                        <div class="info-row">
+                            <div class="info-label">📁 File Name:</div>
+                            <div class="info-value">${file.name}</div>
+                        </div>
+                        
+                        <div class="info-row">
+                            <div class="info-label">📏 File Size:</div>
+                            <div class="info-value">${Math.round(file.size/1024)} KB</div>
+                        </div>
+                        
+                        <div class="info-row">
+                            <div class="info-label">📅 Date & Time:</div>
+                            <div class="info-value ${dateTime !== 'Not found' ? 'success' : 'error'}">
+                                ${dateTime}
                             </div>
                         </div>
-                    `;
+                        
+                        <div class="info-row">
+                            <div class="info-label">📷 Camera:</div>
+                            <div class="info-value">${camera}</div>
+                        </div>
+                        
+                        <div class="info-row">
+                            <div class="info-label">📍 GPS Status:</div>
+                            <div class="info-value ${gpsStatusClass}">${gpsStatus}</div>
+                        </div>`;
+                
+                // Add GPS coordinates if available
+                if (latitude !== null && longitude !== null) {
+                    html += `
+                        <div class="info-row">
+                            <div class="info-label">🌐 Coordinates:</div>
+                            <div class="info-value">
+                                <div class="success">${latitude.toFixed(6)}, ${longitude.toFixed(6)}</div>
+                                <a href="${mapsLink}" target="_blank" class="maps-button">
+                                    🗺️ View on Google Maps
+                                </a>
+                            </div>
+                        </div>`;
                 }
                 
-                infoDiv.innerHTML = infoHTML;
+                // Add debug section
+                html += `
+                        <div class="debug-section">
+                            <div class="debug-title">🔍 Debug Information</div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">Total EXIF Tags:</div>
+                                <div class="info-value">${allTags.length}</div>
+                            </div>
+                            
+                            <div class="info-row">
+                                <div class="info-label">GPS Tags Found:</div>
+                                <div class="info-value">${gpsTags.length}</div>
+                            </div>
+                            
+                            <div style="margin-top: 15px;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">GPS Tag Names:</div>
+                                <div style="color: #7f8c8d; font-size: 0.9em;">${gpsTags.join(', ')}</div>
+                            </div>`;
                 
-                // Log converted values to console for verification
-                console.log('Converted GPS coordinates:', {
-                    latitude: latitude,
-                    longitude: longitude,
-                    originalLatArray: tags['GPSLatitude']?.value,
-                    originalLonArray: tags['GPSLongitude']?.value
-                });
+                // Show raw GPS data if available
+                if (tags['GPSLatitude'] && tags['GPSLongitude']) {
+                    html += `
+                            <div style="margin-top: 15px;">
+                                <div style="font-weight: 600; margin-bottom: 8px;">Raw GPS Values:</div>
+                                <div class="gps-raw">
+                                    GPSLatitude: [${tags['GPSLatitude'].value}]<br>
+                                    GPSLongitude: [${tags['GPSLongitude'].value}]<br>
+                                    Latitude Ref: "${tags['GPSLatitudeRef']?.value?.[0] || 'N'}"<br>
+                                    Longitude Ref: "${tags['GPSLongitudeRef']?.value?.[0] || 'E'}"
+                                </div>
+                            </div>`;
+                }
+                
+                html += `
+                            <div style="margin-top: 15px; color: #7f8c8d; font-size: 0.9em;">
+                                <strong>💡 Tip:</strong> If location isn't showing, check the browser console (F12) for detailed EXIF data.
+                            </div>
+                        </div>
+                    </div>`;
+                
+                outputDiv.innerHTML = html;
+                
+                // Log important data to console
+                console.log('=== GPS DATA ===');
+                console.log('Latitude array:', tags['GPSLatitude']?.value);
+                console.log('Longitude array:', tags['GPSLongitude']?.value);
+                console.log('Converted latitude:', latitude);
+                console.log('Converted longitude:', longitude);
                 
             } catch (error) {
-                console.error('Error:', error);
-                infoDiv.innerHTML = `
-                    <p class="error">❌ Error reading photo data</p>
-                    <p>Details: ${error.message}</p>
-                `;
+                console.error('Error reading EXIF:', error);
+                outputDiv.innerHTML = `
+                    <div class="info-card">
+                        <h3 class="error">❌ Error Reading Photo</h3>
+                        <p>Error: ${error.message}</p>
+                        <p style="color: #7f8c8d; margin-top: 15px;">
+                            This might happen if the photo is corrupted, in an unsupported format, 
+                            or has been heavily edited by an app that removed EXIF data.
+                        </p>
+                    </div>`;
             }
         });
     </script>
