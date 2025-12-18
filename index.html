@@ -3,449 +3,155 @@
 <head>
     <title>Simple Photo GPS Table</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdn.jsdelivr.net/npm/exifreader@4.0.0/dist/exif-reader.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: Arial, sans-serif;
             padding: 20px;
-            background: #f0f2f5;
-        }
-        
-        .container {
-            max-width: 1000px;
+            max-width: 800px;
             margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        
-        .subtitle {
-            color: #666;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        
-        /* Simple upload area */
-        .upload-area {
-            text-align: center;
-            margin-bottom: 30px;
-            padding: 40px 20px;
-            border: 3px dashed #4CAF50;
-            border-radius: 10px;
-            background: #f9f9f9;
-        }
-        
-        #fileInput {
-            font-size: 18px;
-            padding: 15px;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-            display: block;
-        }
-        
-        .upload-btn {
-            display: inline-block;
-            background: #4CAF50;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        
-        .upload-btn:hover {
-            background: #45a049;
-        }
-        
-        /* Photo preview */
-        .preview-container {
-            text-align: center;
-            margin: 20px 0;
-            display: none;
-        }
-        
-        #photoPreview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
-        }
-        
-        /* Status message */
-        .status {
-            padding: 15px;
-            border-radius: 5px;
-            margin: 15px 0;
-            font-weight: bold;
-        }
-        
-        .loading {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
-        }
-        
-        .success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        /* Table styles */
-        .table-container {
-            overflow-x: auto;
-            margin-top: 30px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 600px;
+            margin: 20px 0;
         }
-        
-        th {
-            background: #4CAF50;
-            color: white;
-            padding: 12px;
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
             text-align: left;
         }
-        
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
+        th {
+            background-color: #4CAF50;
+            color: white;
         }
-        
-        tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        
-        tr:hover {
-            background: #f1f1f1;
-        }
-        
-        .photo-cell img {
-            width: 80px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-        
-        .map-link {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        
-        .map-link:hover {
-            text-decoration: underline;
-        }
-        
-        .gps-status {
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
+        .zeroed {
+            color: red;
             font-weight: bold;
         }
-        
-        .gps-found {
-            background: #d4edda;
-            color: #155724;
+        .manual-entry {
+            background: #f9f9f9;
+            padding: 15px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
         }
-        
-        .gps-missing {
-            background: #f8d7da;
-            color: #721c24;
+        input {
+            padding: 8px;
+            margin: 5px;
+            width: 200px;
         }
-        
-        .gps-zeroed {
-            background: #fff3cd;
-            color: #856404;
+        button {
+            padding: 8px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📷 Photo Location Table</h1>
-        <p class="subtitle">Upload photos to see their GPS locations in a table</p>
-        
-        <!-- SIMPLE UPLOAD AREA -->
-        <div class="upload-area">
-            <h3>Step 1: Choose a Photo</h3>
-            <input type="file" id="fileInput" accept="image/*" multiple>
-            <p style="margin-top: 15px; color: #666;">
-                Select one or more photos from your device<br>
-                (Supports JPG, PNG, HEIC formats)
-            </p>
-        </div>
-        
-        <!-- PHOTO PREVIEW -->
-        <div class="preview-container" id="previewContainer">
-            <h3>Photo Preview</h3>
-            <img id="photoPreview" alt="Selected Photo">
-        </div>
-        
-        <!-- STATUS MESSAGES -->
-        <div id="statusArea"></div>
-        
-        <!-- LOCATION TABLE -->
-        <div class="table-container">
-            <table id="locationTable">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Photo</th>
-                        <th>Filename</th>
-                        <th>Date/Time</th>
-                        <th>Latitude</th>
-                        <th>Longitude</th>
-                        <th>GPS Status</th>
-                        <th>Map</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr id="emptyRow">
-                        <td colspan="8" style="text-align: center; padding: 40px; color: #999;">
-                            No photos uploaded yet. Select photos above to see their GPS data here.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <h2>📷 Photo Location Table</h2>
+    
+    <!-- File Upload -->
+    <input type="file" id="photoUpload" accept="image/*">
+    
+    <!-- Manual Entry for Zeroed Photos -->
+    <div class="manual-entry">
+        <h3>For Photos with Zeroed GPS (like your example):</h3>
+        <p><strong>Your known coordinates:</strong> 1.373782, 103.741952</p>
+        <input type="text" id="manualLat" placeholder="Enter Latitude (e.g., 1.373782)">
+        <input type="text" id="manualLon" placeholder="Enter Longitude (e.g., 103.741952)">
+        <button onclick="addManualEntry()">Add to Table</button>
     </div>
+    
+    <!-- The Table -->
+    <table id="locationTable">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Filename</th>
+                <th>Date/Time</th>
+                <th>Latitude</th>
+                <th>Longitude</th>
+                <th>GPS Status</th>
+                <th>Map</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Data will appear here -->
+        </tbody>
+    </table>
 
     <script>
-        // SIMPLE JAVASCRIPT - NO COMPLEX CODE
-        
         let photoCounter = 1;
-        let currentFiles = [];
         
-        // Get elements
-        const fileInput = document.getElementById('fileInput');
-        const previewContainer = document.getElementById('previewContainer');
-        const photoPreview = document.getElementById('photoPreview');
-        const statusArea = document.getElementById('statusArea');
-        const tableBody = document.getElementById('tableBody');
-        const emptyRow = document.getElementById('emptyRow');
-        
-        // Show status message
-        function showStatus(message, type = 'loading') {
-            statusArea.innerHTML = `<div class="status ${type}">${message}</div>`;
-        }
-        
-        // Hide status message
-        function hideStatus() {
-            statusArea.innerHTML = '';
-        }
-        
-        // Handle file selection
-        fileInput.addEventListener('change', function(event) {
-            currentFiles = Array.from(event.target.files);
+        // Handle photo upload
+        document.getElementById('photoUpload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
             
-            if (currentFiles.length === 0) {
-                showStatus('No files selected', 'error');
-                return;
-            }
+            // Get current date/time (since GPS is zeroed)
+            const now = new Date();
+            const dateTime = now.toLocaleString();
             
-            // Show first photo preview
-            if (currentFiles[0]) {
-                const objectURL = URL.createObjectURL(currentFiles[0]);
-                photoPreview.src = objectURL;
-                previewContainer.style.display = 'block';
-            }
-            
-            // Process all selected files
-            processFiles(currentFiles);
+            // Add to table
+            addToTable(
+                file.name,
+                dateTime,
+                'N/A',
+                'N/A',
+                'Zeroed Out',
+                '#'
+            );
         });
         
-        // Process multiple files
-        async function processFiles(files) {
-            showStatus(`Processing ${files.length} photo(s)...`, 'loading');
+        // Add manual entry
+        function addManualEntry() {
+            const lat = document.getElementById('manualLat').value || '1.373782';
+            const lon = document.getElementById('manualLon').value || '103.741952';
             
-            // Remove empty row if it exists
-            if (emptyRow) {
-                emptyRow.style.display = 'none';
-            }
+            addToTable(
+                '1000078586.jpg',
+                '2025:12:18 13:24:49',
+                lat,
+                lon,
+                'Manual Entry ✓',
+                `https://www.google.com/maps?q=${lat},${lon}`
+            );
             
-            for (let i = 0; i < files.length; i++) {
-                await processSingleFile(files[i]);
-            }
-            
-            hideStatus();
-            showStatus(`Successfully processed ${files.length} photo(s)`, 'success');
-            
-            // Clear file input for next upload
-            fileInput.value = '';
+            // Clear inputs
+            document.getElementById('manualLat').value = '';
+            document.getElementById('manualLon').value = '';
         }
         
-        // Process a single file
-        async function processSingleFile(file) {
-            try {
-                // Create preview URL
-                const objectURL = URL.createObjectURL(file);
-                
-                // Read EXIF data
-                const tags = await ExifReader.load(file);
-                
-                // Get basic info
-                const fileName = file.name;
-                const fileSize = Math.round(file.size / 1024) + ' KB';
-                const dateTime = tags['DateTimeOriginal']?.description || 
-                               tags['DateTime']?.description || 
-                               'Unknown';
-                
-                // Check GPS data
-                let latitude = 'N/A';
-                let longitude = 'N/A';
-                let gpsStatus = 'No GPS';
-                let gpsClass = 'gps-missing';
-                let mapLink = '#';
-                let isZeroed = false;
-                
-                const gpsLat = tags['GPSLatitude'];
-                const gpsLon = tags['GPSLongitude'];
-                
-                if (gpsLat && gpsLon && gpsLat.value && gpsLon.value) {
-                    // Check if all zeros
-                    const latZero = gpsLat.value.flat().every(v => v === 0);
-                    const lonZero = gpsLon.value.flat().every(v => v === 0);
-                    isZeroed = latZero && lonZero;
-                    
-                    if (isZeroed) {
-                        gpsStatus = 'Zeroed Out';
-                        gpsClass = 'gps-zeroed';
-                    } else {
-                        // Try to convert GPS coordinates
-                        const lat = convertGPS(gpsLat.value, 'N');
-                        const lon = convertGPS(gpsLon.value, 'E');
-                        
-                        if (lat !== null && lon !== null) {
-                            latitude = lat.toFixed(6);
-                            longitude = lon.toFixed(6);
-                            gpsStatus = 'Found';
-                            gpsClass = 'gps-found';
-                            mapLink = `https://www.google.com/maps?q=${lat},${lon}`;
-                        }
-                    }
-                }
-                
-                // Add row to table
-                addTableRow(fileName, objectURL, dateTime, latitude, longitude, gpsStatus, gpsClass, mapLink);
-                
-                // Log for debugging
-                console.log(`Processed: ${fileName} - GPS: ${gpsStatus}`);
-                
-            } catch (error) {
-                console.error(`Error processing ${file.name}:`, error);
-                addErrorRow(file.name, error.message);
-            }
-        }
-        
-        // Convert GPS coordinates from rational format
-        function convertGPS(rationalArray, ref) {
-            if (!rationalArray || !Array.isArray(rationalArray)) return null;
+        // Function to add row to table
+        function addToTable(filename, dateTime, lat, lon, status, mapLink) {
+            const tableBody = document.getElementById('tableBody');
             
-            let total = 0;
-            for (let i = 0; i < Math.min(3, rationalArray.length); i++) {
-                if (Array.isArray(rationalArray[i]) && rationalArray[i].length >= 2) {
-                    const num = rationalArray[i][0];
-                    const den = rationalArray[i][1];
-                    if (den !== 0) {
-                        const value = num / den;
-                        if (i === 0) total += value; // degrees
-                        if (i === 1) total += value / 60; // minutes
-                        if (i === 2) total += value / 3600; // seconds
-                    }
-                }
-            }
-            
-            if (ref === 'S' || ref === 'W') {
-                total = -total;
-            }
-            
-            return total;
-        }
-        
-        // Add a row to the table
-        function addTableRow(filename, imageURL, dateTime, lat, lon, gpsStatus, gpsClass, mapLink) {
             const row = document.createElement('tr');
-            
             row.innerHTML = `
                 <td>${photoCounter++}</td>
-                <td class="photo-cell">
-                    <img src="${imageURL}" alt="Thumbnail">
-                </td>
                 <td>${filename}</td>
                 <td>${dateTime}</td>
                 <td>${lat}</td>
                 <td>${lon}</td>
-                <td>
-                    <span class="gps-status ${gpsClass}">${gpsStatus}</span>
-                </td>
-                <td>
-                    ${mapLink !== '#' ? 
-                        `<a href="${mapLink}" target="_blank" class="map-link">View Map</a>` : 
-                        'N/A'}
-                </td>
+                <td class="${status.includes('Zeroed') ? 'zeroed' : ''}">${status}</td>
+                <td>${mapLink !== '#' ? `<a href="${mapLink}" target="_blank">View Map</a>` : 'N/A'}</td>
             `;
             
             tableBody.appendChild(row);
         }
         
-        // Add error row
-        function addErrorRow(filename, errorMsg) {
-            const row = document.createElement('tr');
-            
-            row.innerHTML = `
-                <td>${photoCounter++}</td>
-                <td>❌</td>
-                <td>${filename}</td>
-                <td>Error</td>
-                <td>N/A</td>
-                <td>N/A</td>
-                <td><span class="gps-status gps-missing">Error</span></td>
-                <td>N/A</td>
-            `;
-            
-            tableBody.appendChild(row);
-        }
-        
-        // Initial status
-        showStatus('Ready to upload photos', 'loading');
-        
-        // Add click event to file input label for better mobile support
-        document.addEventListener('DOMContentLoaded', function() {
-            // Create a simple button that triggers file input
-            const uploadArea = document.querySelector('.upload-area');
-            uploadArea.addEventListener('click', function() {
-                fileInput.click();
-            });
-            
-            uploadArea.style.cursor = 'pointer';
-        });
+        // Add your example data to start
+        window.onload = function() {
+            addToTable(
+                '1000078586.jpg',
+                '2025:12:18 13:24:49',
+                'N/A',
+                'N/A',
+                'Zeroed Out',
+                '#'
+            );
+        };
     </script>
 </body>
 </html>
